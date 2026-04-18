@@ -477,7 +477,7 @@ You will see this confirmation in the terminal:
 ✅ Seeded 3 users
 ✅ Seeded 15 products
 
-📧 Admin credentials: admin@ecomm.com / admin123
+📧 Admin credentials: admin@ecomm.com / ChangeMe123!
 📧 User credentials:  john@example.com / password123
 ```
 
@@ -602,7 +602,7 @@ The seed script fills your database with realistic demo data so you can explore 
 
 | Role | Email | Password | Can do |
 |---|---|---|---|
-| Admin | `admin@ecomm.com` | `admin123` | Everything + Admin Panel |
+| Admin | `admin@ecomm.com` | `ChangeMe123!` | Everything + Admin Panel |
 | User | `john@example.com` | `password123` | Shop, cart, orders |
 | User | `jane@example.com` | `password123` | Shop, cart, orders |
 
@@ -846,7 +846,7 @@ taskkill /PID <PID> /F
 
 **Fix:** Log out and log back in with the admin account:
 - Email: `admin@ecomm.com`
-- Password: `admin123`
+- Password: `ChangeMe123!`
 
 The Admin Panel link only appears in the header dropdown for users with `role: "admin"`.
 
