@@ -1,0 +1,71 @@
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:6-jammy
+    container_name: shopkart-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db   # data survives container restarts
+    networks:
+      - shopkart-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Express API) ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shopkart-backend
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      MONGO_URI: mongodb://mongodb:27017/ecommerce   # 'mongodb' = service name above
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: development
+    volumes:
+      - ./backend:/app          # hot reload — mirrors local files into container
+      - /app/node_modules       # keep container's node_modules untouched
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - shopkart-net
+    restart: on-failure
+
+  # ── Frontend (React + Vite) ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shopkart-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      API_TARGET: http://backend:8000   # proxy target uses Docker service name
+      VITE_API_URL: http://localhost:8000/api
+    volumes:
+      - ./frontend:/app         # hot reload
+      - /app/node_modules       # keep container's node_modules untouched
+    depends_on:
+      - backend
+    networks:
+      - shopkart-net
+    restart: on-failure
+
+# ── Shared Network ────────────────────────────────────────────────────
+networks:
+  shopkart-net:
+    driver: bridge
+
+# ── Named Volumes ─────────────────────────────────────────────────────
+volumes:
+  mongodb_data:

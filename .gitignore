@@ -8,6 +8,7 @@ node_modules/
 .env.development
 .env.production
 .env.test
+.env.example
 
 # ─── Build Output ────────────────────────────────────────────────
 dist/
@@ -31,6 +32,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# ─── Docker ──────────────────────────────────────────────────────
+mongodb_data/
 
 # ─── Misc ────────────────────────────────────────────────────────
 coverage/

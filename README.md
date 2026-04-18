@@ -46,6 +46,7 @@
 - [Screenshots](#-screenshots)
 - [API Reference](#-api-reference)
 - [Troubleshooting](#-troubleshooting)
+- [Docker](#-docker)
 - [Future Improvements](#-future-improvements)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -131,7 +132,7 @@ graph TB
         Store --> Axios
     end
 
-    subgraph Server["⚙️ Node.js / Express  (port 5000)"]
+    subgraph Server["⚙️ Node.js / Express  (port 8000)"]
         direction TB
         Router["Express Router\n/api/auth  /api/products\n/api/cart  /api/orders  /api/admin"]
         MW["Middleware\nJWT Auth · Admin Guard · Error Handler"]
@@ -364,7 +365,7 @@ ecomm-web/
 │   │   └── seedData.js          ← Run once to fill DB with demo products + users
 │   ├── utils/
 │   │   └── generateToken.js     ← Creates a JWT for a given user ID
-│   ├── .env.example             ← Copy this to .env and fill in your values
+│   ├── .env                     ← Your local env vars (gitignored — never committed)
 │   ├── package.json
 │   └── server.js                ← Entry point — starts the Express app
 │
@@ -449,14 +450,10 @@ npm install
 
 **Create your environment file:**
 
-```bash
-cp .env.example .env
-```
-
-Open the new `backend/.env` file in your editor. The default values work for local development out of the box — you only need to change `JWT_SECRET`:
+Create a file called `backend/.env` and paste in the following content:
 
 ```env
-PORT=5000
+PORT=8000
 MONGO_URI=mongodb://127.0.0.1:27017/ecommerce
 JWT_SECRET=pick-any-long-random-string-and-put-it-here
 JWT_EXPIRES_IN=7d
@@ -464,7 +461,9 @@ CLIENT_URL=http://localhost:5173
 NODE_ENV=development
 ```
 
-> **What is `JWT_SECRET`?** It's a private password your server uses to sign authentication tokens. Make it long and random. Never share it publicly. A good one looks like: `x7k#mP2qL!9vRnWs`.
+Replace `pick-any-long-random-string-and-put-it-here` with your own secret. Make it long and random — never share it publicly. If your secret contains special characters like `#` or `%`, wrap it in double quotes: `JWT_SECRET="my#secret"`.
+
+> **What is `JWT_SECRET`?** It's a private password your server uses to sign authentication tokens. This file is gitignored and will never be committed to GitHub.
 
 **Seed the database** (run this only once, or when you want to reset demo data):
 
@@ -491,12 +490,14 @@ npm run dev
 You should see:
 
 ```
-🚀 Server running at http://localhost:5000
+🚀 Server running at http://localhost:8000
 📦 Environment: development
 MongoDB connected: 127.0.0.1
 ```
 
 > If you see a MongoDB connection error instead, see [Troubleshooting → MongoDB connection refused](#mongodb-connection-refused).
+
+> **macOS users:** Port 5000 is used by AirPlay Receiver on macOS Monterey and later. This project uses port **8000** to avoid that conflict. If you need to change it, update `PORT` in `backend/.env` and `target` in `frontend/vite.config.js`.
 
 ---
 
@@ -511,17 +512,13 @@ npm install
 
 **Create the environment file:**
 
-```bash
-cp .env.example .env
-```
-
-The default value in `frontend/.env` is fine:
+Create a file called `frontend/.env` and paste in the following content:
 
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:8000/api
 ```
 
-> The Vite dev server is also configured to automatically forward any `/api` request to `http://localhost:5000`, so API calls work even without setting this variable.
+> The Vite dev server is also configured to automatically forward any `/api` request to `http://localhost:8000`, so API calls work even without setting this variable.
 
 **Start the frontend:**
 
@@ -547,7 +544,7 @@ You should see:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `PORT` | No | `5000` | Port the API server listens on |
+| `PORT` | No | `8000` | Port the API server listens on |
 | `MONGO_URI` | **Yes** | — | Full MongoDB connection string |
 | `JWT_SECRET` | **Yes** | — | Secret used to sign and verify tokens. Keep this private. |
 | `JWT_EXPIRES_IN` | No | `7d` | Token validity period (`7d` = 7 days, `1h` = 1 hour) |
@@ -560,7 +557,7 @@ You should see:
 |---|---|---|---|
 | `VITE_API_URL` | No | `/api` | Base URL prepended to every Axios request |
 
-> **Security reminder:** Never commit either `.env` file to Git. Both are listed in `.gitignore` by default. The `.env.example` files are safe to commit — they contain no real secrets.
+> **Security reminder:** Never commit either `.env` file to Git. Both are listed in `.gitignore` and will never be pushed to GitHub.
 
 ---
 
@@ -575,15 +572,25 @@ You need **two terminal windows** open at the same time — one for the backend,
 │  cd backend                     │  │  cd frontend                    │
 │  npm run dev                    │  │  npm run dev                    │
 │                                 │  │                                 │
-│  → http://localhost:5000        │  │  → http://localhost:5173        │
+│  → http://localhost:8000        │  │  → http://localhost:5173        │
 └─────────────────────────────────┘  └─────────────────────────────────┘
 ```
 
 | Service | URL | Notes |
 |---|---|---|
 | **App (Frontend)** | http://localhost:5173 | Open this in your browser |
-| **API (Backend)** | http://localhost:5000/api | Called automatically by the frontend |
-| **Health Check** | http://localhost:5000/api/health | Returns `{"status":"OK"}` if server is up |
+| **API (Backend)** | http://localhost:8000/api | Called automatically by the frontend |
+| **Health Check** | http://localhost:8000/api/health | Returns `{"status":"OK"}` if server is up |
+
+### Or run everything with one command (Docker)
+
+If you have Docker installed, skip the two-terminal setup entirely:
+
+```bash
+docker compose up --build
+```
+
+MongoDB, the backend, and the frontend all start together. See the [Docker](#-docker) section for full details.
 
 ---
 
@@ -760,21 +767,21 @@ npm run seed
 ### Frontend shows "Network Error" or blank data
 
 **Check 1 — Is the backend running?**
-Open a new browser tab and visit: `http://localhost:5000/api/health`
+Open a new browser tab and visit: `http://localhost:8000/api/health`
 You should see `{"status":"OK"}`. If you get an error, the backend is not running.
 
 **Check 2 — Is the proxy configured?**
 Open [frontend/vite.config.js](frontend/vite.config.js) and confirm:
 ```js
 proxy: {
-  '/api': { target: 'http://localhost:5000', changeOrigin: true }
+  '/api': { target: 'http://localhost:8000', changeOrigin: true }
 }
 ```
 
 **Check 3 — Is your `.env` correct?**
 `frontend/.env` should contain:
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:8000/api
 ```
 
 ---
@@ -812,22 +819,24 @@ node -v   # now shows v18.x.x
 
 **Error:**
 ```
-Error: listen EADDRINUSE: address already in use :::5000
+Error: listen EADDRINUSE: address already in use :::8000
 ```
 
-**What it means:** Something else is already running on port 5000 (often a previous `npm run dev` that wasn't stopped properly).
+**What it means:** Something else is already running on port 8000 (often a previous `npm run dev` that wasn't stopped properly).
 
 **Fix:**
 
 ```bash
-# macOS / Linux — kill whatever is using port 5000
-lsof -ti:5000 | xargs kill
+# macOS / Linux — kill whatever is using port 8000
+lsof -ti:8000 | xargs kill
 
 # Windows (PowerShell)
-netstat -ano | findstr :5000
+netstat -ano | findstr :8000
 # Note the PID in the last column, then:
 taskkill /PID <PID> /F
 ```
+
+> **macOS note:** Port 5000 is reserved by AirPlay Receiver on macOS Monterey+. This project deliberately uses port **8000** to avoid that conflict.
 
 ---
 
@@ -840,6 +849,59 @@ taskkill /PID <PID> /F
 - Password: `admin123`
 
 The Admin Panel link only appears in the header dropdown for users with `role: "admin"`.
+
+---
+
+## 🐳 Docker
+
+Run the entire stack — MongoDB, backend, and frontend — with a single command. No need to install MongoDB locally or manage two terminal windows.
+
+### Prerequisites
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for macOS or Windows (includes Docker Compose).
+
+### Start everything
+
+```bash
+docker compose up --build
+```
+
+Then open **http://localhost:5173** in your browser.
+
+### Seed the database (first time only)
+
+In a separate terminal while the containers are running:
+
+```bash
+docker compose exec backend npm run seed
+```
+
+### Daily commands
+
+```bash
+docker compose up           # start all three services
+docker compose down         # stop all services
+docker compose down -v      # stop + wipe the MongoDB data volume (full reset)
+docker compose logs -f      # stream logs from all services
+```
+
+### How the services connect
+
+```
+Your Browser (localhost:5173)
+       │
+       ▼
+ shopkart-frontend  ──/api requests──▶  shopkart-backend  ──▶  shopkart-mongodb
+ (Vite dev server)                       (Express :8000)         (Mongo :27017)
+       │                                       │
+  hot reload from                         hot reload from
+  ./frontend volume                       ./backend volume
+```
+
+Three things make this work:
+- **Service names as hostnames** — the backend connects to MongoDB using `mongodb://mongodb:27017` (the service name `mongodb`, not `localhost`)
+- **`API_TARGET=http://backend:8000`** — the Vite proxy forwards `/api` requests to the backend container by service name
+- **`host: true` in vite.config.js** — binds Vite to `0.0.0.0` so it's reachable from your Mac's browser
 
 ---
 
@@ -856,7 +918,6 @@ Contributions are welcome for any of these! See [Contributing](#-contributing).
 - [ ] **Advanced search** — Elasticsearch for typo-tolerant search and autocomplete
 - [ ] **Mobile app** — React Native frontend using the same REST API
 - [ ] **Unit + integration tests** — Jest and Supertest coverage
-- [ ] **Docker Compose** — One-command local setup: `docker compose up`
 - [ ] **CI/CD pipeline** — GitHub Actions for lint, test, and build on every PR
 - [ ] **PWA** — Installable on mobile via Progressive Web App support
 - [ ] **Product recommendations** — "Customers also viewed" based on category
