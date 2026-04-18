@@ -317,7 +317,7 @@ After any significant change, verify:
 ---
 
 ## Official docs
-- [Bugsnag Node.js / Express guide](https://docs.bugsnag.com/platforms/node/express/)
-- [Bugsnag React guide](https://docs.bugsnag.com/platforms/browser/react/)
-- [Breadcrumbs reference](https://docs.bugsnag.com/platforms/browser/breadcrumbs/)
-- [Dashboard filters](https://docs.bugsnag.com/product/searching-and-filtering/)
+- [Bugsnag Node.js / Express guide](https://docs.bugsnag.com/platforms/javascript/express/)
+- [Bugsnag React guide](https://docs.bugsnag.com/platforms/javascript/react/)
+- [Breadcrumbs reference](https://docs.bugsnag.com/platforms/javascript/react/customizing-breadcrumbs/)
+- [Dashboard filters](https://docs.bugsnag.com/product/custom-filters/)
