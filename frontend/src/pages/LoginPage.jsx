@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '../store/slices/authSlice';
+import { useBugsnagFlowContext } from '../hooks/useBugsnag.jsx';
+import bugsnagManager from '../utils/bugsnag.jsx';
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -12,14 +14,39 @@ export default function LoginPage() {
 
   const from = location.state?.from?.pathname || '/';
 
+  useBugsnagFlowContext('Login Flow');
+
   useEffect(() => {
     if (user) navigate(from, { replace: true });
     return () => dispatch(clearError());
   }, [user, navigate, from, dispatch]);
 
+  // Report login errors to Bugsnag as handled errors with full context
+  useEffect(() => {
+    if (error) {
+      bugsnagManager.notifyError(
+        new Error(`Login failed: ${error}`),
+        'login_error',
+        { step: 'authentication', errorMessage: error }
+      );
+    }
+  }, [error]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    bugsnagManager.trackFormSubmit('login_form', { email: form.email });
+    bugsnagManager.leaveBreadcrumb('Login Attempted', { email: '[REDACTED]' }, 'user');
     dispatch(login(form));
+  };
+
+  // ── DEV-ONLY: test error injection ──────────────────────────────────────
+  const triggerLoginError = () => {
+    bugsnagManager.setFlowContext('Login Flow');
+    bugsnagManager.notifyError(
+      new Error('Login API failed - invalid credentials'),
+      'login_error',
+      { step: 'authentication', testInjected: true, method: 'POST', endpoint: '/api/auth/login' }
+    );
   };
 
   return (
@@ -73,6 +100,19 @@ export default function LoginPage() {
             Admin: admin@ecomm.com / admin123<br />
             User: john@example.com / password123
           </div>
+
+          {import.meta.env.DEV && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <p className="font-semibold text-yellow-800 mb-2">⚡ Bugsnag Test — Login Flow</p>
+              <button
+                type="button"
+                onClick={triggerLoginError}
+                className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-3 py-1 rounded border border-yellow-300"
+              >
+                Simulate: Login API Failure
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

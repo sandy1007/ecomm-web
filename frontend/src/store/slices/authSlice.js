@@ -1,9 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import bugsnagManager from '../../utils/bugsnag.jsx';
 
 const storedUser = localStorage.getItem('user');
-const storedToken = localStorage.getItem('token');
 
 export const register = createAsyncThunk('auth/register', async (data, { rejectWithValue }) => {
   try {
@@ -41,22 +41,18 @@ export const updateProfile = createAsyncThunk('auth/updateProfile', async (data,
   }
 });
 
+export const logout = createAsyncThunk('auth/logout', async () => {
+  await api.post('/auth/logout');
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: storedUser ? JSON.parse(storedUser) : null,
-    token: storedToken || null,
     loading: false,
     error: null,
   },
   reducers: {
-    logout(state) {
-      state.user = null;
-      state.token = null;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      toast.success('Logged out');
-    },
     clearError(state) {
       state.error = null;
     },
@@ -64,10 +60,11 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     const handleAuth = (state, action) => {
       state.loading = false;
-      state.token = action.payload.token;
       state.user = action.payload.user;
-      localStorage.setItem('token', action.payload.token);
       localStorage.setItem('user', JSON.stringify(action.payload.user));
+      const { _id, name, email, role } = action.payload.user;
+      bugsnagManager.setUser(_id, name, email);
+      bugsnagManager.leaveBreadcrumb('Login Successful', { userId: _id, role }, 'user');
     };
 
     builder
@@ -77,7 +74,19 @@ const authSlice = createSlice({
 
       .addCase(login.pending, (s) => { s.loading = true; s.error = null; })
       .addCase(login.fulfilled, handleAuth)
-      .addCase(login.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
+      .addCase(login.rejected, (s, a) => {
+        s.loading = false;
+        s.error = a.payload;
+        bugsnagManager.leaveBreadcrumb('Login Failed', { reason: a.payload }, 'error');
+      })
+
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        localStorage.removeItem('user');
+        bugsnagManager.leaveBreadcrumb('User Logged Out', {}, 'user');
+        bugsnagManager.setUser(null);
+        toast.success('Logged out');
+      })
 
       .addCase(fetchProfile.fulfilled, (s, a) => {
         s.user = a.payload;
@@ -92,5 +101,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { clearError } = authSlice.actions;
 export default authSlice.reducer;

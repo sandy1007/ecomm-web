@@ -31,7 +31,18 @@ router.post(
   ],
   createProduct
 );
-router.put('/products/:id', updateProduct);
+router.put(
+  '/products/:id',
+  [
+    body('name').optional().trim().notEmpty().isLength({ max: 300 }).withMessage('Invalid product name'),
+    body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+    body('discountPrice').optional().isFloat({ min: 0 }).withMessage('Discount price must be a positive number'),
+    body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
+    body('category').optional().trim().notEmpty().withMessage('Category cannot be empty'),
+    body('brand').optional().trim().notEmpty().withMessage('Brand cannot be empty'),
+  ],
+  updateProduct
+);
 router.delete('/products/:id', deleteProduct);
 
 router.get('/orders', getAllOrders);

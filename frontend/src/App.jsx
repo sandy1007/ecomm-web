@@ -5,6 +5,8 @@ import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { fetchCart } from './store/slices/cartSlice';
+import { useBugsnagPageTracking } from './hooks/useBugsnag.jsx';
+import bugsnagManager from './utils/bugsnag.jsx';
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -23,11 +25,21 @@ import AdminAddProduct from './pages/admin/AdminAddProduct';
 
 export default function App() {
   const dispatch = useDispatch();
-  const { token } = useSelector((s) => s.auth);
+  const { user } = useSelector((s) => s.auth);
+
+  // Automatic page navigation breadcrumbs
+  useBugsnagPageTracking();
 
   useEffect(() => {
-    if (token) dispatch(fetchCart());
-  }, [token, dispatch]);
+    if (user) dispatch(fetchCart());
+  }, [user?._id, dispatch]);
+
+  // Keep Bugsnag user context in sync with auth state
+  useEffect(() => {
+    if (user) {
+      bugsnagManager.setUser(user._id, user.name, user.email);
+    }
+  }, [user?._id]);
 
   return (
     <div className="min-h-screen flex flex-col">

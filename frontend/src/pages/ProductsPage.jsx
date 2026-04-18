@@ -6,6 +6,8 @@ import ProductCard from '../components/product/ProductCard';
 import ProductFilters from '../components/product/ProductFilters';
 import Loader from '../components/common/Loader';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { useBugsnagFlowContext } from '../hooks/useBugsnag.jsx';
+import bugsnagManager from '../utils/bugsnag.jsx';
 
 const SORT_OPTIONS = [
   { label: 'Relevance', value: '-createdAt' },
@@ -22,11 +24,26 @@ export default function ProductsPage() {
 
   const params = Object.fromEntries(searchParams.entries());
 
+  useBugsnagFlowContext('Product Discovery');
+
   useEffect(() => {
     dispatch(fetchProducts(params));
   }, [searchParams.toString(), dispatch]);
 
+  // Track search and filter actions as breadcrumbs
+  useEffect(() => {
+    const keyword = searchParams.get('keyword');
+    const category = searchParams.get('category');
+    if (keyword) {
+      bugsnagManager.trackSearch(keyword, pagination.total);
+    }
+    if (category) {
+      bugsnagManager.leaveBreadcrumb('Category Filter Applied', { category }, 'user');
+    }
+  }, [searchParams.toString()]);
+
   const setSort = (val) => {
+    bugsnagManager.leaveBreadcrumb('Sort Applied', { sortBy: val }, 'user');
     const p = new URLSearchParams(searchParams);
     p.set('sort', val);
     p.delete('page');

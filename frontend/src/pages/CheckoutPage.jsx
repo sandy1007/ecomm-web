@@ -5,6 +5,8 @@ import { createOrder } from '../store/slices/orderSlice';
 import { selectCartTotal } from '../store/slices/cartSlice';
 import { formatPrice } from '../utils/helpers';
 import { FiCreditCard, FiTruck } from 'react-icons/fi';
+import { useBugsnagFlowContext } from '../hooks/useBugsnag.jsx';
+import bugsnagManager from '../utils/bugsnag.jsx';
 
 const PAYMENT_METHODS = [
   { id: 'COD', label: 'Cash on Delivery', icon: '💵' },
@@ -23,11 +25,25 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
+  useBugsnagFlowContext('Checkout Flow');
+
+  const handlePaymentMethodChange = (method) => {
+    setPaymentMethod(method);
+    bugsnagManager.trackActionClick('payment_method_selected', { method });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     for (const [key, val] of Object.entries(address)) {
       if (!val.trim()) return;
     }
+
+    bugsnagManager.setFlowContext('Checkout Flow - Payment Step');
+    bugsnagManager.leaveBreadcrumb('Order Placement Initiated', {
+      paymentMethod,
+      itemsCount: items.length,
+      total: cartTotal + shippingCost,
+    }, 'user');
 
     const orderItems = items.map((item) => ({
       productId: item.product._id,
@@ -35,9 +51,37 @@ export default function CheckoutPage() {
     }));
 
     const result = await dispatch(createOrder({ shippingAddress: address, paymentMethod, items: orderItems }));
+
     if (createOrder.fulfilled.match(result)) {
-      navigate(`/orders/${result.payload._id}`);
+      const orderId = result.payload._id;
+      bugsnagManager.trackOrderUpdate({ id: orderId, status: 'placed', total: cartTotal + shippingCost, items: orderItems });
+      bugsnagManager.leaveBreadcrumb('Order Placed Successfully', { orderId, paymentMethod }, 'state');
+      navigate(`/orders/${orderId}`);
+    } else {
+      bugsnagManager.notifyError(
+        new Error(`Order placement failed: ${result.error?.message || 'unknown error'}`),
+        'order_error',
+        { paymentMethod, itemsCount: items.length, total: cartTotal + shippingCost }
+      );
     }
+  };
+
+  // ── DEV-ONLY: test error injection ──────────────────────────────────────
+  const triggerPaymentFailure = () => {
+    bugsnagManager.setFlowContext('Checkout Flow - Payment Step');
+    bugsnagManager.leaveBreadcrumb('Payment Initiated', { method: paymentMethod, amount: cartTotal + shippingCost }, 'user');
+    bugsnagManager.notifyError(
+      new Error('Payment gateway timeout'),
+      'payment_error',
+      {
+        paymentMethod,
+        amount: cartTotal + shippingCost,
+        itemsCount: items.length,
+        endpoint: '/api/orders',
+        statusCode: 504,
+        testInjected: true,
+      }
+    );
   };
 
   if (items.length === 0) {
@@ -92,7 +136,7 @@ export default function CheckoutPage() {
                       name="payment"
                       value={pm.id}
                       checked={paymentMethod === pm.id}
-                      onChange={() => setPaymentMethod(pm.id)}
+                      onChange={() => handlePaymentMethodChange(pm.id)}
                       className="accent-blue-600"
                     />
                     <span className="text-lg">{pm.icon}</span>
@@ -139,6 +183,19 @@ export default function CheckoutPage() {
             <button type="submit" disabled={placing} className="btn-primary w-full mt-4 py-3">
               {placing ? 'Placing Order...' : 'Place Order'}
             </button>
+
+            {import.meta.env.DEV && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                <p className="font-semibold text-yellow-800 mb-2">⚡ Bugsnag Test — Checkout Flow</p>
+                <button
+                  type="button"
+                  onClick={triggerPaymentFailure}
+                  className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-3 py-1 rounded border border-yellow-300"
+                >
+                  Simulate: Payment Gateway Timeout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </form>

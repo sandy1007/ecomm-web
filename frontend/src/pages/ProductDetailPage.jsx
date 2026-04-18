@@ -7,6 +7,8 @@ import { addToCart } from '../store/slices/cartSlice';
 import Loader from '../components/common/Loader';
 import { formatPrice, getDiscountPercent } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import { useBugsnagFlowContext, useBugsnagProductTracking } from '../hooks/useBugsnag.jsx';
+import bugsnagManager from '../utils/bugsnag.jsx';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -17,6 +19,9 @@ export default function ProductDetailPage() {
   const [activeImg, setActiveImg] = useState(0);
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
   const [showReviewForm, setShowReviewForm] = useState(false);
+
+  useBugsnagFlowContext('Product View');
+  useBugsnagProductTracking(product ? { id: product._id, name: product.name, category: product.category, price: product.price, rating: product.ratings?.avg } : null);
 
   useEffect(() => {
     dispatch(fetchProductById(id));
@@ -37,15 +42,30 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!user) { toast.error('Please login to add to cart'); return; }
+    bugsnagManager.trackActionClick('add_to_cart', {
+      productId: product._id,
+      productName: product.name,
+      price: finalPrice,
+      quantity: qty,
+    });
     dispatch(addToCart({ productId: product._id, quantity: qty }));
   };
 
   const handleReviewSubmit = (e) => {
     e.preventDefault();
+    bugsnagManager.trackFormSubmit('review_form', { productId: id, rating: reviewForm.rating });
     dispatch(submitReview({ productId: id, ...reviewForm }))
       .unwrap()
       .then(() => { toast.success('Review submitted!'); setShowReviewForm(false); })
       .catch((err) => toast.error(err));
+  };
+
+  // ── DEV-ONLY: test error injection ──────────────────────────────────────
+  const triggerUIcrash = () => {
+    bugsnagManager.setFlowContext('Product View');
+    bugsnagManager.leaveBreadcrumb('Simulating UI Crash', { productId: product._id }, 'user');
+    // This will be caught by the ErrorBoundary and reported to Bugsnag
+    undefinedFunctionCall(); // eslint-disable-line no-undef
   };
 
   return (
@@ -150,6 +170,19 @@ export default function ProductDetailPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {import.meta.env.DEV && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <p className="font-semibold text-yellow-800 mb-2">⚡ Bugsnag Test — Product View Flow</p>
+              <button
+                type="button"
+                onClick={triggerUIcrash}
+                className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-3 py-1 rounded border border-yellow-300"
+              >
+                Simulate: UI Crash (uncaught error)
+              </button>
             </div>
           )}
         </div>

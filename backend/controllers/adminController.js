@@ -41,6 +41,9 @@ const createProduct = async (req, res) => {
 };
 
 const updateProduct = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
+
   const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
@@ -55,24 +58,28 @@ const deleteProduct = async (req, res) => {
   res.json({ message: 'Product removed' });
 };
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const getAllProducts = async (req, res) => {
-  const { page = 1, limit = 20, keyword = '', category } = req.query;
+  const { page = 1, keyword = '', category } = req.query;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
   const filter = {};
-  if (keyword) filter.name = { $regex: keyword, $options: 'i' };
+  if (keyword) filter.name = { $regex: escapeRegex(keyword), $options: 'i' };
   if (category) filter.category = category;
 
   const total = await Product.countDocuments(filter);
   const products = await Product.find(filter)
     .sort('-createdAt')
     .skip((page - 1) * limit)
-    .limit(Number(limit));
+    .limit(limit);
 
   res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
 };
 
 // Orders
 const getAllOrders = async (req, res) => {
-  const { page = 1, limit = 20, status } = req.query;
+  const { page = 1, status } = req.query;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
   const filter = status ? { orderStatus: status } : {};
 
   const total = await Order.countDocuments(filter);
@@ -80,7 +87,7 @@ const getAllOrders = async (req, res) => {
     .populate('user', 'name email')
     .sort('-createdAt')
     .skip((page - 1) * limit)
-    .limit(Number(limit));
+    .limit(limit);
 
   res.json({ orders, total, page: Number(page), pages: Math.ceil(total / limit) });
 };
@@ -103,9 +110,10 @@ const updateOrderStatus = async (req, res) => {
 
 // Users
 const getAllUsers = async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
+  const { page = 1 } = req.query;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
   const total = await User.countDocuments();
-  const users = await User.find().sort('-createdAt').skip((page - 1) * limit).limit(Number(limit));
+  const users = await User.find().select('-password').sort('-createdAt').skip((page - 1) * limit).limit(limit);
   res.json({ users, total, page: Number(page), pages: Math.ceil(total / limit) });
 };
 

@@ -4,12 +4,36 @@ import { FiShoppingCart, FiArrowRight } from 'react-icons/fi';
 import CartItem from '../components/cart/CartItem';
 import { selectCartTotal } from '../store/slices/cartSlice';
 import { formatPrice } from '../utils/helpers';
+import { useBugsnagFlowContext, useBugsnagCartTracking } from '../hooks/useBugsnag.jsx';
+import bugsnagManager from '../utils/bugsnag.jsx';
 
 export default function CartPage() {
   const { items, loading } = useSelector((s) => s.cart);
   const { user } = useSelector((s) => s.auth);
   const total = useSelector(selectCartTotal);
   const shippingCost = total >= 500 ? 0 : 49;
+
+  useBugsnagFlowContext('Cart Flow');
+  useBugsnagCartTracking({ items, total, subtotal: total });
+
+  const handleProceedToCheckout = () => {
+    bugsnagManager.trackActionClick('proceed_to_checkout', {
+      itemsCount: items.length,
+      cartTotal: total,
+      shippingCost,
+    });
+  };
+
+  // ── DEV-ONLY: test error injection ──────────────────────────────────────
+  const triggerCartAPIFailure = () => {
+    bugsnagManager.setFlowContext('Cart Flow');
+    bugsnagManager.leaveBreadcrumb('Cart API Call Attempted', { endpoint: '/api/cart', method: 'POST' }, 'request');
+    bugsnagManager.notifyError(
+      new Error('Cart service unavailable'),
+      'api_error',
+      { endpoint: '/api/cart', statusCode: 503, itemsCount: items.length, cartTotal: total, testInjected: true }
+    );
+  };
 
   if (!user) {
     return (
@@ -63,9 +87,26 @@ export default function CartPage() {
           {shippingCost > 0 && (
             <p className="text-xs text-gray-400 mt-1">Add ₹{500 - total} more for free delivery</p>
           )}
-          <Link to="/checkout" className="btn-primary block text-center mt-4 py-3">
+          <Link
+            to="/checkout"
+            onClick={handleProceedToCheckout}
+            className="btn-primary block text-center mt-4 py-3"
+          >
             Proceed to Checkout <FiArrowRight className="inline" />
           </Link>
+
+          {import.meta.env.DEV && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <p className="font-semibold text-yellow-800 mb-2">⚡ Bugsnag Test — Cart Flow</p>
+              <button
+                type="button"
+                onClick={triggerCartAPIFailure}
+                className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 px-3 py-1 rounded border border-yellow-300"
+              >
+                Simulate: Cart Service Unavailable
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

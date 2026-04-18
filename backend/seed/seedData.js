@@ -6,8 +6,13 @@ const User = require('../models/User');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ecommerce';
 
+// DEVELOPMENT ONLY — never run this script in production.
+// Change these credentials immediately after seeding.
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@ecomm.com';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
+
 const users = [
-  { name: 'Admin User', email: 'admin@ecomm.com', password: 'admin123', role: 'admin' },
+  { name: 'Admin User', email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: 'admin' },
   { name: 'John Doe', email: 'john@example.com', password: 'password123', role: 'user' },
   { name: 'Jane Smith', email: 'jane@example.com', password: 'password123', role: 'user' },
 ];
