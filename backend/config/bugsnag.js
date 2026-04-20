@@ -15,6 +15,7 @@ const initializeBugsnag = () => {
     appVersion: process.env.APP_VERSION || '1.0.0',
     plugins: [BugsnagPluginExpress],
     autoTrackSessions: true,
+    maxBreadcrumbs: 100,
   });
 
   console.log('✅ Bugsnag initialized successfully');

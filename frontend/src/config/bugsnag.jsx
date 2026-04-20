@@ -1,3 +1,4 @@
+import React from 'react';
 import Bugsnag from '@bugsnag/browser';
 import BugsnagPluginReact from '@bugsnag/plugin-react';
 
@@ -13,7 +14,7 @@ const initializeBugsnag = () => {
     releaseStage: import.meta.env.VITE_NODE_ENV || 'development',
     enabledReleaseStages: ['production', 'staging', 'development'],
     appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
-    plugins: [BugsnagPluginReact],
+    plugins: [new BugsnagPluginReact(React)],
     autoTrackSessions: true,
   });
 
